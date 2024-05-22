@@ -1,0 +1,159 @@
+\documentclass[12pt, letterpaper]{article}
+
+\title{AMS 315 Project 1 Part A}
+\author{William Daniels}
+\date{\today}
+
+
+\usepackage{graphicx}
+\graphicspath{{../figures/}}
+
+\usepackage{titlesec}
+\titleformat{\section}[runin]
+            {\bfseries}
+            {\thesection}
+            {}
+            {}
+            [:]
+
+\usepackage[obeyspaces,spaces]{url}
+
+\usepackage{listings}
+
+\usepackage{multirow}
+
+\usepackage{float}
+
+\usepackage{geometry}
+\geometry{letterpaper, margin = 1 in}
+
+
+\begin{document}
+\pagenumbering{gobble}
+
+\noindent
+\begin{minipage}{0.7\textwidth}
+    Will Daniels; 112774725
+
+    \today
+
+    Data analysis; AMS 315
+
+    Project 1 Part A
+\end{minipage}
+%
+\begin{minipage}{0.3\textwidth}
+    \begin{flushright}
+        \includegraphics[height = 48pt]{../figures/SBULogoStacked.png}
+    \end{flushright}
+\end{minipage}
+\noindent
+\rule{\textwidth}{1pt}
+
+\section*{Introduction}
+This assignment explores imputation, the process of inferring missing data to alleviate statistical and computational issues that come from incomplete data.
+Provided with CSV files containing observation IDs and either independent or dependent observations, I sorted and combined the data files according to ID, characterized the amount of missing data, and employed an imputation technique of my choosing.
+Additionally, I compared selected results and statistics before and after the imputation to evaluate how it affects what conclusions we can draw from the data.
+
+\section*{Methods}
+I chose to do my analysis using an interactive python notebook because I am already very familiar with python and some of its numerical, statistical, and visualization packages.
+Of them, I used numpy, pandas, matplotlib, and scikit-learn.
+The data files were merged by reading each into a pandas dataframe using the \path{read_csv} function, sorted by ID using the dataframe's built in sorting functionality, and combined by constructing a new dataframe containing the ID, independent values, and dependent values.
+The number of NaNs were computed using built in dataframe methods, the selected statistics were computed using numpy functions, and the fit was coded manually.
+
+\section*{Results}
+Of the 678 total observations, 167 pairs (\(\approx25\%\)) are missing at least one value and 151 (\(\approx22\%\)) pairs contain a single NaN;
+93 (\(\approx14\%\)) of the independent values are NaN and 66 (\(\approx10\%\)) of the dependent values are NaN.
+There are 8 (\(\approx1\%\)) pairs of NaN.
+The result of the \(k=5\) nearest neighbors imputation is shown in figures \ref{fig:replacement} and \ref{fig:hist}, found in the appendix.
+
+\section*{Conclusions and discussion}
+Visually, the imputation seems to have worked well-- the distribution and fit appears similar before and after the imputation in figures \ref{fig:replacement} and \ref{fig:hist}.
+More quantitatively, we see in table \ref{tab:results} (also in the appendix) that the statistics and fit change very little one the data is imputed.
+This indicates that imputation can be safely applied to data before analysis, even data without a clear and well defined trend such as this data.
+Since the computational cost of dealing with NaNs can be great in large datasets, imputation significantly facilitate analysis.
+
+\newpage
+%\section*{Appendix: figures and tables}
+\textbf{Appendix: Figures and tables}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{part_a_no_nans}
+    \includegraphics[width=\textwidth]{part_a_imputed}
+    \caption{
+        Scatterplots representing the data in various ways.
+        On top, data with NaN values omitted.
+        On bottom, imputed data.
+        From left to right, independent vs. dependent values, ID vs. independent values, and ID vs. dependent values.
+    }
+    \label{fig:replacement}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \caption{Comparison of mean, median, standard deviation, linear fit parameters, and \(r^2\) of the dataset before and after imputation.}
+    \label{tab:results}
+    \begin{tabular}{ c c || c c | c}
+        \hline\hline
+        \multicolumn{2}{c||}{Statistic} & Omitted NaNs & Imputed data & Difference
+        \\
+        \hline\hline
+        \multirow[c]{3}{*}{\rotatebox{90}{IV}} &
+        Mean   & 5.0114 & 5.0127 & 0.0013
+        \\
+        &Median & 4.9755 & 4.9883 & 0.0127
+        \\
+        &Std. deviation & 0.9790 & 0.9200 & 0.0589
+        \\\hline
+        \multirow[c]{3}{*}{\rotatebox{90}{DV}} &
+        Mean   & 78.067 & 78.030 & 0.0362
+        \\
+        &Median & 78.067 & 78.067 & 0.0099
+        \\
+        &Std. deviation & 8.2416 & 7.9216 & 0.3140
+        \\\hline
+        \multirow[c]{3}{*}{\rotatebox{90}{FIT}} &
+        \(\beta_1\)  & -0.226 & -0.280 & 0.0534
+        \\
+        &\(\beta_0\) & 79.433 & 79.433 & 0.2317
+        \\
+        &\(r^2\)     & 0.1295 & 0.1284 & 0.0011
+        \\\hline\hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{part_a_2dhist}
+    \caption{
+        Two dimensional histograms of independent vs. dependent values with NaN values omitted (left) and NaN values imputed (right).
+    }
+    \label{fig:hist}
+\end{figure}
+
+\noindent\textbf{Appendix: Code}
+
+\begin{lstlisting}[language=Python, caption=Python function to compute linear fit parameters]
+def fit(data):
+    import pandas as pd
+    import numpy as np
+    # useful quantities
+    xbar = data["IV"].mean()
+    ybar = data["DV"].mean()
+    Sxx = np.sum((data["IV"] - xbar)**2)
+    Sxy = np.sum((data["IV"] - xbar) * (data["DV"] - ybar))
+    Syy = np.sum((data["DV"] - ybar)**2)
+
+    # estimate fit parameters
+    B1 = Sxy / Sxx
+    B0 = ybar - B1*xbar
+    SSres = np.sum((data["DV"] - np.polyval([B1, B0], data["IV"]))**2)
+
+    # compute rsq
+    rsq = (Syy - SSres) / Syy
+
+    return B1, B0, rsq
+\end{lstlisting}
+
+\end{document}

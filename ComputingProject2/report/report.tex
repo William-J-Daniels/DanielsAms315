@@ -1,0 +1,185 @@
+\documentclass[12pt, letterpaper]{article}
+
+\title{AMS 315 Project 2}
+\author{William Daniels\thanks{ID: 112774725}}
+\date{\today}
+
+
+\usepackage{graphicx}
+\graphicspath{{../figures/}}
+
+\usepackage{amsmath}
+
+\usepackage{listings}
+\lstdefinestyle{mystyle}{
+%    backgroundcolor=\color{backcolour},   
+%    commentstyle=\color{codegreen},
+%    keywordstyle=\color{magenta},
+    numberstyle=\tiny,
+%    stringstyle=\color{codepurple},
+%    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+%    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+%    tabsize=2
+}
+\lstset{style=mystyle}
+
+\usepackage{biblatex}
+\addbibresource{refs.bib}
+
+\usepackage{geometry}
+\geometry{letterpaper, margin=1in}
+
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+This project is to analyze a synthetic dataset using multiple regression techniques.
+Inspired by the dialogue between a paper reporting a false positive connection between gene-environment interactions and depression~\cite{caspi} and a paper revealing the lack of statistical significance therein~\cite{risch}, I looked for interactions between environmental factors \(E_i | i \in [1, 4]\) and genetic factors \(G_j | j \in [1, 20]\) that influenced a response variable \(Y\).
+Additionally, a transformation was applied to \(Y\) to ensure that the normality assumption of multiple regression analysis was respected.
+
+\section{Methods}
+I analyzed the data using R~\cite{R} and the packages MASS~\cite{MASS}, Leaps~\cite{leaps}, and Knitr~\cite{knitr}.
+Furthermore, my analysis was based strongly on the provided multiple regression handout~\cite{handout}.
+
+I stated by doing a regression on just the environment variables
+\begin{equation}
+    Y \sim \sum_i E_i
+    \label{eq:M_E}
+\end{equation}
+and a regression encompassing every possible second and first order effect
+\begin{equation}
+    Y \sim \left( \sum_i E_i + \sum_j G_j \right)^2
+    \label{eq:M_raw}
+\end{equation}
+then extracted their adjusted r-squared statistics for future comparisons.
+This was followed by a Box-Cox transformation~\cite{boxcox} to ensure that the normality assumption of multiple regression analysis is respected.
+The transformation
+\begin{equation}
+    Y \rightarrow Y^p
+    \label{eq:boxcox}
+\end{equation}
+was applied, where \(p\) was judiciously selected from within the 95\% confidence interval of the Box-Cox optimal \(\lambda\). A regression on
+\begin{equation}
+    Y^p \sim \left( \sum_i E_i + \sum_j G_j \right)^2
+    \label{eq:M_trans}
+\end{equation}
+was performed and its adjusted r-squared compared to that of the previous regressions.
+It's residuals were also compared to that of \eqref{eq:M_raw} to assess whether the transformation improved the normality of the data.
+
+Stepwise regression is then used to generate a table of proposed models.
+From them, the simplest model with the most explanatory power that is not much less explanatory than the most explanatory model is selected.
+That is, the model with the fewest parameters and adjusted r-squared value not significantly less than the greatest adjusted r-squared value is selected.
+This choice is then validated by checking that the variables identified by the stepwise regression have significant main effects.
+
+With candidate variables identified, a penultimate regression
+\begin{equation}
+    Y \sim \left( \sum_k E_k + \sum_l G_l \right)^2
+    \label{eq:M_2stage}
+\end{equation}
+was performed, where \(k\) and \(l\) are the set of indices of the previously identified candidate variables.
+From this, the statistically significant terms are selected and used in the final model.
+
+\section{Results}
+The power \(p\) chosen for the Box-Cox transformation \eqref{eq:boxcox} is \(p = 2\). The scan is shown in Figure~\ref{fig:boxcox}.
+\begin{figure}
+    \includegraphics[width=\textwidth]{boxcox.pdf}
+    \caption{
+        Result of a Box-Cox scan for optimal power transformation (solid line).
+        Here, the optimal \(\lambda\) comes out to \(2.2\) and it's 95\% confidence interval (dotted line) is \(\left(1.7, 2.8\right)\).
+    }
+    \label{fig:boxcox}
+\end{figure}
+
+The result of the stepwise regression and the significance of coefficients are shown in Table~\ref{tab:model_summary} and Table~\ref{tab:sig_coef} respectively. From these tables, we deduce that \(E_2\), \(E_3\), \(E_4\), \(G_6\), and \(G_{16}\) should be considered for the model.
+\begin{table}
+    \centering
+    \caption{Model summary}
+    \label{tab:model_summary}
+    \begin{tabular}{c | c c}
+        \hline\hline
+        Model & \(r_a^2\) & BIC
+        \\\hline
+        \(\beta_0 + E_3:E_4\) & 0.408 & -740.701
+        \\
+        \(\beta_0 + E_2 + E_3:E_4\) & 0.543 & -1108.708
+        \\
+        \(\beta_0 + E_2 + E_3:E_4 + G_6:G_{16}\) & 0.583 & -1235.029
+        \\
+        \(\beta_0 + E_2 + E_4 + E_3:E_4 + G_6:G_{16}\) & 0.589 & -1246.715
+        \\
+        \(\beta_0 + E_2 + E_3 + E_4 + E_3:E_4 + G_6:G_{16}\) & 0.598 & -1273.277
+        \\\hline\hline
+    \end{tabular}
+\end{table}
+\begin{table}
+    \centering
+    \caption{Significant coefficients from a global fit}
+    \label{tab:sig_coef}
+    \begin{tabular}{c | c c c c}
+        \hline\hline
+        IV & Estimate & Standard error & \(t\)-value & \(P\left(>\left|t\right|\right)\)
+        \\\hline
+        \(E_2\) & 7.852 & 0.350 & 22.466 & \(\approx 0\)
+        \\
+        \(E_3\) & 8.285 & 0.339 & 24.461 & \(\approx 0\)
+        \\
+        \(E_4\) & 10.218 & 0.348 & 29.385 & \(\approx 0\)
+        \\
+        \(G_6\) & 11.743 & 1.236 & 9.498 & \(\approx 0\)
+        \\
+        \(G_{16}\) & 10.900 & 1.233 & 8.839 & \(\approx 0\)
+        \\\hline\hline
+    \end{tabular}
+\end{table}
+
+The residual plots for the fit containing all second order effects before and after transformation \eqref{eq:boxcox} are shown in Figure~\ref{fig:residuals}.
+\begin{figure}
+    \includegraphics[width=\textwidth]{raw_resid.pdf}
+    \\
+    \includegraphics[width=\textwidth]{trans_resid.pdf}
+    \caption{
+        Residuals vs squared sum of independent values before (top, \(r_a^2=0.605\)) and after (bottom, \(r_a^2=0.604\)) the transformation \(Y \rightarrow Y^2\) is applied to the response variable.
+        Notice that the residuals after the transformation appear more symmetric, implying that the normality of the data has been improved.
+    }
+    \label{fig:residuals}
+\end{figure}
+
+Finally, I can present the final model:
+\begin{equation}
+    Y^2 \sim 16.886 + 7.900 E_2 + 8.387 E_3 + 10.209 E_4 + 12.836 G_6:G_{16}
+\end{equation}
+For this model, \(r_a^2 = 0.598\), which is greater than \(r_a^2 = 0.54\) for the model including only environmental variables.
+In addition to environmental factors, the \(G_6:G_{16}\) interaction is significantly associated with the square of \(Y\), having a \(t\)-value of 12.263 in the final model.
+
+\section{Discussion}
+The decision to use \(p = 2\) for the Box-Cox transformation was not the optimal power identified in Figure~\ref{fig:boxcox}.
+Although this is not the optimal power identified by the scan, Box and Cox themselves warn against choosing the "optimal" value when there are scientific and model reasons to use power within an appropriate confidence interval~\cite{boxcox}.
+Of course, for this synthetic dataset no such modeling reasons exist, but I felt that it was in the spirit of the project (and implied by the handout) to choose a familiar power such as \(2\) from the confidence interval.
+
+Although applying the Box-Cox transformation to \(Y\) did very slightly reduce the adjusted \(r^2\) of the regression, the improvement of the residuals is much more important.
+The change in Figure~\ref{fig:residuals} is subtle but noticeable, becoming more symmetric and slightly less slanted.
+These improvements are critical and well worth a \(0.001\) reduction in adjusted \(r^2\) because all the subsequent analysis relies on the assumption that the data is normal.
+
+Including the gene-gene interaction term \(G_6:G_{16}\) resulted in an improvement in the adjusted r-squared over the model that used only environmental variables.
+Furthermore, the \(G_6:G_{16}\) term is statistically significant.
+Therefore, I conclude that there is an association between genetic variables 6 and 16 with the square of the response variable \(Y\).
+
+\printbibliography
+
+\appendix
+\section{Code}
+Below is my R script used to analyze the dataset associated with my student ID.
+It is based off of the multiple regression handout.
+
+\lstinputlisting[language=R]{../analysis.r}
+
+\end{document}
